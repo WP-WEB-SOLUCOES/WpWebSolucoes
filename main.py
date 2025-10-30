@@ -55,4 +55,4 @@ async def get_base(request: Request):
 
 @app.get("/about")
 async def get_about(request: Request):
-    return {"status": "about"}
+    return {"status": "about us"}
