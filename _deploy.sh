@@ -12,42 +12,58 @@ BRANCH="main"
 export PATH="$HOME/.cargo/bin:/usr/local/bin:/usr/bin:$PATH"
 
 # === LOG INÍCIO ===
-echo "" >> "$LOG_FILE"
-echo "=== DEPLOY FORÇADO por $PUSHER em $(date) ===" >> "$LOG_FILE"
+{
+  echo ""
+  echo "=== DEPLOY INICIADO por $PUSHER em $(date) ==="
+} >> "$LOG_FILE"
 
 cd "$WORK_DIR"
 
-# 1. FORÇAR ATUALIZAÇÃO DO deploy.sh
-echo "[1/5] Forçando deploy.sh do GitHub..." >> "$LOG_FILE"
-git fetch origin >> "$LOG_FILE" 2>&1
+# 1. Buscar atualizações do repositório
+echo "[1/6] Buscando atualizações do GitHub..." >> "$LOG_FILE"
+git fetch origin "$BRANCH" >> "$LOG_FILE" 2>&1
 
+# 2. Verificar se há mudanças
+LOCAL_HASH=$(git rev-parse HEAD)
+REMOTE_HASH=$(git rev-parse origin/"$BRANCH")
 
-# 2. FORÇAR RESET TOTAL (ignora conflitos locais)
-echo "[2/5] Reset HARD para origin/$BRANCH..." >> "$LOG_FILE"
-git fetch origin >> "$LOG_FILE" 2>&1
-git reset --hard origin/$BRANCH >> "$LOG_FILE" 2>&1
-git clean -fd >> "$LOG_FILE" 2>&1
+if [ "$LOCAL_HASH" = "$REMOTE_HASH" ]; then
+    echo "[2/6] Nenhuma atualização encontrada. Deploy encerrado." >> "$LOG_FILE"
+    exit 0
+fi
 
-# 3. Verificar mudanças em dependências
+echo "[2/6] Detectadas mudanças no repositório..." >> "$LOG_FILE"
+
+# 3. Obter lista de arquivos modificados
+CHANGED_FILES=$(git diff --name-only "$LOCAL_HASH" "$REMOTE_HASH")
+echo "[3/6] Arquivos modificados:" >> "$LOG_FILE"
+echo "$CHANGED_FILES" >> "$LOG_FILE"
+
+# 4. Atualizar apenas arquivos modificados
+echo "[4/6] Atualizando arquivos modificados..." >> "$LOG_FILE"
+for file in $CHANGED_FILES; do
+    # Criar diretórios se necessário
+    mkdir -p "$(dirname "$file")"
+    git checkout origin/"$BRANCH" -- "$file" >> "$LOG_FILE" 2>&1
+done
+
+# 5. Verificar se dependências mudaram
 DEPS_CHANGED=false
 for file in "${DEP_FILES[@]}"; do
-    if [ -f "$file" ]; then
-        if ! git diff --quiet HEAD@{1} HEAD -- "$file" 2>/dev/null; then
-            echo "[3/5] $file MUDOU → atualizando com uv" >> "$LOG_FILE"
-            DEPS_CHANGED=true
-        fi
+    if echo "$CHANGED_FILES" | grep -q "^$file$"; then
+        echo "[5/6] $file modificado → atualizando dependências com uv" >> "$LOG_FILE"
+        DEPS_CHANGED=true
     fi
 done
 
-# 4. Atualizar dependências (só se necessário)
+# 6. Atualizar dependências se necessário
 if [ "$DEPS_CHANGED" = true ]; then
-    echo "[4/5] Executando 'uv sync'..." >> "$LOG_FILE"
     uv sync --frozen >> "$LOG_FILE" 2>&1
 else
-    echo "[4/5] Sem mudanças em dependências → pulando" >> "$LOG_FILE"
+    echo "[5/6] Nenhuma mudança em dependências → pulando atualização de pacotes" >> "$LOG_FILE"
 fi
 
-
-
-# === LOG FIM ===
-echo "=== DEPLOY CONCLUÍDO COM SUCESSO em $(date) ===" >> "$LOG_FILE"
+# 7. Log de finalização
+{
+  echo "=== DEPLOY FINALIZADO com sucesso em $(date) ==="
+} >> "$LOG_FILE"
