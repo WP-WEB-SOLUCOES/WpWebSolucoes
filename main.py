@@ -52,3 +52,7 @@ async def health_check():
 @app.get("/base")
 async def get_base(request: Request):
     return templates.TemplateResponse("base.html", {"request": request})
+
+@app.get("/teste")
+async def get_teste(request: Request):
+    return {"message": "Teste bem-sucedido!"}
