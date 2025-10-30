@@ -89,8 +89,12 @@ async def github_webhook(request: Request):
 
     # 6. EXECUTAR DEPLOY
     logging.info(f"Deploy TRIGGERED por {pusher} em {ref}")
-    run_deploy(pusher)
-
+    print(f"Deploy TRIGGERED por {pusher} em {ref}")
+    try:
+        run_deploy(pusher)
+    except Exception as e:
+        logging.error(f"Erro ao executar deploy: {e}")
+        print(f"ERRO AO EXECUTAR DEPLOY: {e}")
     return {
         "status": "deploy_triggered",
         "pusher": pusher,
@@ -100,4 +104,4 @@ async def github_webhook(request: Request):
 
 @app.get("/")
 def root():
-    return {"status": "webhook ativo", "endpoint": "/web.hook"}
+    return {"status": "webhook ativo", "endpoint": "/webhook"}
