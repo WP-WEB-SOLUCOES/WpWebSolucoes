@@ -100,4 +100,4 @@ async def github_webhook(request: Request):
 
 @app.get("/")
 def root():
-    return {"status": "webhook ativo", "endpoint": "/webhook"}
+    return {"status": "webhook ativo", "endpoint": "/web.hook"}
