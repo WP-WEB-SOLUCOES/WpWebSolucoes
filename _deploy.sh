@@ -43,7 +43,7 @@ fi
 
 # 4. Reiniciar app
 echo "[4/4] Reiniciando wpwebsolucoes..." >> "$LOG_FILE"
-supervisorctl restart wpwebsolucoes >> "$LOG_FILE" 2>&1
+supervisorctl restart wpweb >> "$LOG_FILE" 2>&1
 
 # === LOG FIM ===
 echo "=== DEPLOY CONCLUÍDO com sucesso em $(date) ===" >> "$LOG_FILE"
