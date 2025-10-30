@@ -20,8 +20,7 @@ cd "$WORK_DIR"
 # 1. FORÇAR ATUALIZAÇÃO DO deploy.sh
 echo "[1/5] Forçando deploy.sh do GitHub..." >> "$LOG_FILE"
 git fetch origin >> "$LOG_FILE" 2>&1
-git checkout origin/$BRANCH -- deploy.sh >> "$LOG_FILE" 2>&1
-chmod +x deploy.sh >> "$LOG_FILE" 2>&1
+
 
 # 2. FORÇAR RESET TOTAL (ignora conflitos locais)
 echo "[2/5] Reset HARD para origin/$BRANCH..." >> "$LOG_FILE"
@@ -48,9 +47,7 @@ else
     echo "[4/5] Sem mudanças em dependências → pulando" >> "$LOG_FILE"
 fi
 
-# 5. Reiniciar app
-echo "[5/5] Reiniciando wpwebsolucoes..." >> "$LOG_FILE"
-#supervisorctl restart wpwebsolucoes >> "$LOG_FILE" 2>&1
+
 
 # === LOG FIM ===
 echo "=== DEPLOY CONCLUÍDO COM SUCESSO em $(date) ===" >> "$LOG_FILE"
