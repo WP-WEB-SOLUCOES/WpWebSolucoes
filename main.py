@@ -19,10 +19,36 @@ app.add_middleware(
 )
 
 @app.get("/")
-async def home(request: Request):
+async def get_index(request: Request):
     return templates.TemplateResponse("index.html", {"request": request})
 
+@app.get("/login")
+async def get_login(request: Request):
+    return templates.TemplateResponse("login.html", {"request": request})
 
+@app.get("/register")
+async def get_register(request: Request):
+    return templates.TemplateResponse("register.html", {"request": request})
 
+@app.get("/dashboard")
+async def get_dashboard(request: Request):
+    return templates.TemplateResponse("dashboard.html", {"request": request})
 
+# Adicione outras rotas conforme necessário para suas páginas
+@app.get("/services")
+async def get_services(request: Request):
+    return templates.TemplateResponse("services.html", {"request": request})
 
+@app.get("/contact")
+async def get_contact(request: Request):
+    return templates.TemplateResponse("contact.html", {"request": request})
+
+# Rota de health check
+@app.get("/health")
+async def health_check():
+    return {"status": "healthy", "message": "WP Web Soluções API is running"}
+
+# Se você quiser uma rota para servir o base.html diretamente (opcional)
+@app.get("/base")
+async def get_base(request: Request):
+    return templates.TemplateResponse("base.html", {"request": request})
