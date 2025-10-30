@@ -53,3 +53,6 @@ async def health_check():
 async def get_base(request: Request):
     return templates.TemplateResponse("base.html", {"request": request})
 
+@app.get("/about")
+async def get_about(request: Request):
+    return {"status": "about"}
