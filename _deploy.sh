@@ -1,28 +1,34 @@
 #!/bin/bash
-set -e  # Para o script se qualquer comando falhar
+set -e  # Para se qualquer comando falhar
 
 WORK_DIR="/home/ubuntu/WpWebSolucoes"
 LOG_FILE="$WORK_DIR/deploy.log"
 DEP_FILES=("requirements.txt" "pyproject.toml")
+PUSHER="$1"
+BRANCH="main"
 
-echo "=== DEPLOY INICIADO em $(date) por $1 ===" >> "$LOG_FILE"
+# === LOG INÍCIO ===
+echo "" >> "$LOG_FILE"
+echo "=== DEPLOY INICIADO por $PUSHER em $(date) ===" >> "$LOG_FILE"
 
 cd "$WORK_DIR"
 
-# 1. Fazer git pull
-echo "[1/4] git pull..." >> "$LOG_FILE"
-git fetch origin >> "$LOG_FILE" 2>&1
-git reset --hard origin/main >> "$LOG_FILE" 2>&1
-git clean -fd >> "$LOG_FILE" 2>&1
+# 1. Puxar apenas as mudanças (incremental)
+echo "[1/4] git pull (incremental)..." >> "$LOG_FILE"
+git pull origin $BRANCH --ff-only >> "$LOG_FILE" 2>&1 || {
+    echo "[ERRO] Conflito ou branch divergente!" >> "$LOG_FILE"
+    exit 1
+}
 
-# 2. Verificar se dependências mudaram
+# 2. Verificar se arquivos de dependência mudaram
 DEPS_CHANGED=false
 for file in "${DEP_FILES[@]}"; do
     if [ -f "$file" ]; then
-        if ! git diff --quiet HEAD~1 HEAD -- "$file"; then
-            echo "[2/4] $file mudou → atualizando dependências" >> "$LOG_FILE"
+        if git diff --quiet HEAD@{1} HEAD -- "$file"; then
+            echo "[INFO] $file não mudou" >> "$LOG_FILE"
+        else
+            echo "[2/4] $file MUDOU → atualizando dependências" >> "$LOG_FILE"
             DEPS_CHANGED=true
-            break
         fi
     fi
 done
@@ -37,8 +43,7 @@ fi
 
 # 4. Reiniciar app
 echo "[4/4] Reiniciando wpwebsolucoes..." >> "$LOG_FILE"
-supervisorctl restart wpweb >> "$LOG_FILE" 2>&1
+supervisorctl restart wpwebsolucoes >> "$LOG_FILE" 2>&1
 
-echo "=== DEPLOY CONCLUÍDO em $(date) ===" >> "$LOG_FILE"
-echo "" >> "$LOG_FILE"
-echo ""
+# === LOG FIM ===
+echo "=== DEPLOY CONCLUÍDO com sucesso em $(date) ===" >> "$LOG_FILE"
