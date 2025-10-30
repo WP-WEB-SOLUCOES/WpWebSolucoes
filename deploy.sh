@@ -41,3 +41,4 @@ supervisorctl restart wpwebsolucoes >> "$LOG_FILE" 2>&1
 
 echo "=== DEPLOY CONCLUÍDO em $(date) ===" >> "$LOG_FILE"
 echo "" >> "$LOG_FILE"
+echo ""
