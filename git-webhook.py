@@ -64,8 +64,7 @@ async def github_webhook(request: Request):
     event = request.headers.get("X-GitHub-Event")
     if event != "push":
         logging.info(f"Ignorando evento: {event}")
-        return {"status": "ignored", "event": event}
-
+        return HTTPException(status_code=400, detail="Invalid event")
     # 2. Ler body
     body = await request.body()
 
