@@ -1,0 +1,164 @@
+{% extends "base.html" %}
+
+{# Define o título específico desta página #}
+{% block title %}WP Web Soluções - Desenvolvimento de Apps & Sistemas Web{% endblock %}
+
+{# Preenche o bloco 'content' com todo o conteúdo da landing page #}
+{% block content %}
+    <section class="hero">
+        <div class="container">
+            <div class="hero-content">
+                <div class="hero-badge">
+                    <i class="fas fa-rocket"></i>
+                    Transformando ideias em realidade digital
+                </div>
+                <h1 class="hero-title reveal">
+                    Desenvolvimento de 
+                    <span style="display: block;">Apps & Sistemas Web</span>
+                </h1>
+                <p class="hero-subtitle reveal reveal-delay-1">
+                    Especialistas em criar soluções digitais inovadoras que impulsionam 
+                    negócios. Do conceito à implementação, entregamos excelência técnica 
+                    e design excepcional em cada projeto.
+                </p>
+                <div class="hero-actions">
+                    <a href="#services" class="btn btn-primary reveal reveal-delay-2">
+                        <i class="fas fa-cog"></i>
+                        Nossos Serviços
+                    </a>
+                    <a href="#contact" class="btn btn-outline reveal reveal-delay-3">
+                        <i class="fas fa-calendar"></i>
+                        Consultoria Gratuita
+                    </a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="section">
+        <div class="container">
+            <div class="section-header">
+                <h2 class="section-title reveal">Por que Escolher a WP Web Soluções?</h2>
+                <p class="section-subtitle reveal reveal-delay-1">
+                    Combinamos expertise técnica avançada com visão estratégica para 
+                    entregar resultados excepcionais que superam expectativas.
+                </p>
+            </div>
+            <div class="features-grid">
+                <div class="feature-card reveal">
+                    <div class="feature-icon"><i class="fas fa-mobile-alt"></i></div>
+                    <h3 class="feature-title">Design Responsivo</h3>
+                    <p class="feature-description">
+                        Criamos experiências perfeitas em todos os dispositivos, 
+                        garantindo usabilidade e engajamento em qualquer tela.
+                    </p>
+                </div>
+                <div class="feature-card reveal reveal-delay-1">
+                    <div class="feature-icon"><i class="fas fa-bolt"></i></div>
+                    <h3 class="feature-title">Alta Performance</h3>
+                    <p class="feature-description">
+                        Otimização máxima para carregamento ultrarrápido e 
+                        desempenho excepcional em todas as aplicações.
+                    </p>
+                </div>
+                <div class="feature-card reveal reveal-delay-2">
+                    <div class="feature-icon"><i class="fas fa-shield-alt"></i></div>
+                    <h3 class="feature-title">Segurança Avançada</h3>
+                    <p class="feature-description">
+                        Proteção de última geração para garantir a integridade 
+                        dos dados e a segurança de suas operações.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="section services" id="services">
+        <div class="container">
+            <div class="section-header">
+                <h2 class="section-title reveal">Nossos Serviços Especializados</h2>
+                <p class="section-subtitle reveal reveal-delay-1">
+                    Soluções completas e personalizadas para impulsionar sua 
+                    presença digital e otimizar processos de negócio.
+                </p>
+            </div>
+            <div class="services-grid">
+                <div class="service-card reveal">
+                    <div class="service-icon"><i class="fas fa-laptop-code"></i></div>
+                    <h3 class="service-title">Desenvolvimento Web</h3>
+                    <p>Sistemas web sob medida com tecnologias modernas e arquitetura escalável.</p>
+                    <ul class="service-features">
+                        <li>Desenvolvimento Full Stack</li>
+                        <li>APIs RESTful & GraphQL</li>
+                        <li>Banco de Dados Otimizado</li>
+                        <li>Integrações de Terceiros</li>
+                        <li>Deploy & DevOps</li>
+                    </ul>
+                    <a href="#contact" class="btn btn-outline">Solicitar Proposta</a>
+                </div>
+                <div class="service-card reveal reveal-delay-1">
+                    <div class="service-icon"><i class="fas fa-mobile"></i></div>
+                    <h3 class="service-title">Aplicativos Mobile</h3>
+                    <p>Apps nativos e híbridos com performance excepcional para Android e iOS.</p>
+                    <ul class="service-features">
+                        <li>React Native & Flutter</li>
+                        <li>APIs Especializadas</li>
+                        <li>Integração com APIs</li>
+                        <li>Publicação nas Stores</li>
+                        <li>Manutenção Contínua</li>
+                    </ul>
+                    <a href="#contact" class="btn btn-outline">Solicitar Proposta</a>
+                </div>
+                <div class="service-card reveal reveal-delay-2">
+                    <div class="service-icon"><i class="fas fa-shopping-cart"></i></div>
+                    <h3 class="service-title">E-commerce & LMS</h3>
+                    <p>Plataformas completas de vendas e ensino com gestão integrada.</p>
+                    <ul class="service-features">
+                        <li>Lojas Virtuais Personalizadas</li>
+                        <li>Plataformas de Ensino Online</li>
+                        <li>Gateway de Pagamento</li>
+                        <li>Sistema de Entregas</li>
+                        <li>Painel Administrativo</li>
+                    </ul>
+                    <a href="#contact" class="btn btn-outline">Solicitar Proposta</a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="section process">
+        <div class="container">
+            <div class="section-header">
+                <h2 class="section-title reveal">Nosso Processo de Desenvolvimento</h2>
+                <p class="section-subtitle reveal reveal-delay-1">
+                    Metodologia ágil e transparente que garante qualidade, 
+                    prazo e resultados em cada etapa do projeto.
+                </p>
+            </div>
+            <div class="process-steps">
+                <div class="process-step reveal"><div class="step-content"><h3 class="step-title">Análise & Planejamento</h3><p class="step-description">Compreensão profunda das necessidades e definição da estratégia ideal para seu projeto.</p></div></div>
+                <div class="process-step reveal reveal-delay-1"><div class="step-content"><h3 class="step-title">Design & Prototipagem</h3><p class="step-description">Criação de interfaces intuitivas e protótipos interativos para validação do conceito.</p></div></div>
+                <div class="process-step reveal reveal-delay-2"><div class="step-content"><h3 class="step-title">Desenvolvimento Ágil</h3><p class="step-description">Implementação com as melhores práticas e tecnologias modernas em sprints iterativos.</p></div></div>
+                <div class="process-step reveal reveal-delay-3"><div class="step-content"><h3 class="step-title">Entrega & Suporte</h3><p class="step-description">Deploy, treinamento e suporte contínuo para evolução e manutenção do projeto.</p></div></div>
+            </div>
+        </div>
+    </section>
+
+    <section class="cta">
+        <div class="container">
+            <div class="cta-content">
+                <h2 class="cta-title reveal">Pronto para Inovar?</h2>
+                <p class="cta-description reveal reveal-delay-1">
+                    Vamos transformar sua ideia em uma solução digital de sucesso. 
+                    Agende uma consultoria gratuita e descubra as possibilidades.
+                </p>
+                <a href="#contact" class="btn btn-white reveal reveal-delay-2">
+                    <i class="fas fa-calendar-check"></i>
+                    Agendar Consultoria
+                </a>
+            </div>
+        </div>
+    </section>
+{% endblock %}
+
+{# O footer já está no base.html, então não precisamos adicioná-lo aqui #}

@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}WP Web Soluções{% endblock %}</title>
+    
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <link rel="stylesheet" href="{{ url_for('static', path='/css/style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', path='/css/auth.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', path='/css/responsive.css') }}">
+
+    {% block head_links %}{% endblock %}
+</head>
+<body>
+
+    {% block header %}
+    <header id="header">
+        <div class="container">
+            <nav class="nav-container">
+                <a href="{{ url_for('get_index') }}" class="logo">
+                    <i class="fas fa-code logo-icon"></i>
+                    WP Web Soluções
+                </a>
+                
+                <div class="nav-menu">
+                    <div class="nav-actions">
+                        <a href="http://163.176.173.198" class="status-badge">
+                            <i class="fas fa-chart-line"></i>
+                            <span>Status Desenvolvimento</span>
+                        </a>
+                        
+                        <a href="{{ url_for('get_login') }}" class="btn btn-primary">
+                            <i class="fas fa-sign-in-alt"></i>
+                            Área do Cliente
+                        </a>
+                    </div>
+                </div>
+            </nav>
+        </div>
+    </header>
+    {% endblock %}
+
+    <main>
+        {% block content %}{% endblock %}
+    </main>
+
+    {% block footer %}
+    <footer id="contact">
+        <div class="container">
+            <div class="footer-grid">
+                <div class="footer-col">
+                    <h3>WP Web Soluções</h3>
+                    <p style="color: rgba(255, 255, 255, 0.8); margin-bottom: 2rem; line-height: 1.6;">
+                        Especialistas em desenvolvimento de aplicativos e soluções web 
+                        sob medida para impulsionar negócios digitais com tecnologia 
+                        de ponta e design excepcional.
+                    </p>
+                    <a href="http://163.176.173.198" class="status-badge">
+                        <i class="fas fa-chart-line"></i>
+                        Status dos Projetos
+                    </a>
+                </div>
+                <div class="footer-col">
+                    <h3>Serviços</h3>
+                    <ul class="footer-links">
+                        <li><a href="#services">Desenvolvimento Web</a></li>
+                        <li><a href="#services">Aplicativos Mobile</a></li>
+                        <li><a href="#services">E-commerce & LMS</a></li>
+                        <li><a href="#services">Sistemas Personalizados</a></li>
+                        <li><a href="#services">Consultoria em TI</a></li>
+                    </ul>
+                </div>
+                <div class="footer-col">
+                    <h3>Contato</h3>
+                    <ul class="footer-links">
+                        <li><a href="mailto:contato@wpwebsolucoes.com.br"><i class="fas fa-envelope"></i> contato@wpwebsolucoes.com.br</a></li>
+                        <li><a href="tel:+5511999999999"><i class="fas fa-phone"></i> (11) 99999-9999</a></li>
+                        <li><a href="#"><i class="fas fa-map-marker-alt"></i> São Paulo, SP - Brasil</a></li>
+                        <li><a href="#"><i class="fas fa-clock"></i> Seg - Sex: 9h às 18h</a></li>
+                    </ul>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2024 WP Web Soluções. Todos os direitos reservados.</p>
+                <p>Desenvolvido com ódio e hospedado na Oracle Cloud</p>
+            </div>
+        </div>
+    </footer>
+    {% endblock %}
+
+    <script src="{{ url_for('static', path='/js/script.js') }}"></script>
+    <script src="{{ url_for('static', path='/js/auth.js') }}"></script>
+    
+    {% block scripts %}{% endblock %}
+</body>
+</html>
