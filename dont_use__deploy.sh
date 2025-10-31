@@ -104,3 +104,4 @@ fi
   echo "=== DEPLOY FINALIZADO com sucesso em $(date) ==="
   echo "==============================================="
 } >> "$LOG_FILE"
+echo "[7/7] Deploy concluído com sucesso." >> "$LOG_FILE"
