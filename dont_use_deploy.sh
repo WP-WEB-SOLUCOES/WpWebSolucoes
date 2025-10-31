@@ -105,3 +105,4 @@ fi
   echo "==============================================="
 } >> "$LOG_FILE"
 echo "[7/7] Deploy concluído com sucesso." >> "$LOG_FILE"
+echo "[7/7] Arquivos modificados:" >> "$LOG_FILE"
