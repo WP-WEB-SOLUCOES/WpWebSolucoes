@@ -9,7 +9,7 @@ import logging
 from typing import Dict, Any
 
 # ===================== CONFIGURAÇÃO =====================
-SECRET = "777-Rroot"  # MESMA DO GITHUB!
+SECRET = "777-Rroot"  
 BRANCH = "refs/heads/main"
 DEPLOY_SCRIPT = "/home/ubuntu/WpWebSolucoes/deploy.sh"
 WORK_DIR = "/home/ubuntu/WpWebSolucoes"
