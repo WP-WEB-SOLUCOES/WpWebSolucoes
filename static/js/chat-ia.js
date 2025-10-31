@@ -1,4 +1,4 @@
-// Chat IA Agent - Versão Melhorada
+// Chat IA Agent - Versão Melhorada com WebSocket Integration
 class ChatIA {
     constructor() {
         this.isOpen = false;
@@ -6,13 +6,81 @@ class ChatIA {
         this.isTyping = false;
         this.conversationContext = [];
         this.waitingForHuman = false;
+        this.humanChatActive = false; // NOVO: Controla se está em modo humano
+        this.startTime = Date.now()
+        this.pendingHumanTranfer = false;
+        this.sessionId = this.getOrCreateSessionId();
+
         this.initializeChat();
+        this.restorePreviousSession(); // NOVO: Restaura sessão anterior
+    }
+
+    // NOVO: Sistema de sessão com cookies
+    getOrCreateSessionId() {
+        let sessionId = this.getCookie('chat_session_id');
+        if (!sessionId) {
+            sessionId = 'session_' + Math.random().toString(36).substr(2, 9) + '_' + Date.now();
+            this.setCookie('chat_session_id', sessionId, 15); // 15 minutos
+        }
+        return sessionId;
+    }
+
+    setCookie(name, value, minutes) {
+        const expires = new Date();
+        expires.setTime(expires.getTime() + (minutes * 60 * 1000));
+        document.cookie = `${name}=${value};expires=${expires.toUTCString()};path=/;SameSite=Lax`;
+    }
+
+    getCookie(name) {
+        const value = `; ${document.cookie}`;
+        const parts = value.split(`; ${name}=`);
+        if (parts.length === 2) return parts.pop().split(';').shift();
+        return null;
+    }
+
+    // NOVO: Restaura sessão anterior se existir
+    restorePreviousSession() {
+        const savedState = localStorage.getItem(`chat_state_${this.sessionId}`);
+        if (savedState) {
+            try {
+                const state = JSON.parse(savedState);
+                this.humanChatActive = state.humanChatActive || false;
+                this.waitingForHuman = state.waitingForHuman || false;
+
+                if (this.humanChatActive) {
+                    // Se tinha um chat humano ativo, tenta reconectar
+                    setTimeout(() => this.initializeWebSocket(), 1000);
+                }
+            } catch (e) {
+                console.log('Não foi possível restaurar sessão anterior');
+            }
+        }
+    }
+
+    // NOVO: Salva estado atual
+    saveState() {
+        const state = {
+            humanChatActive: this.humanChatActive,
+            waitingForHuman: this.waitingForHuman,
+            timestamp: new Date().toISOString()
+        };
+        localStorage.setItem(`chat_state_${this.sessionId}`, JSON.stringify(state));
+    }
+
+    // NOVO: Limpa estado (quando chat é fechado completamente)
+    clearState() {
+        localStorage.removeItem(`chat_state_${this.sessionId}`);
+        this.setCookie('chat_session_id', '', -1); // Expira cookie
     }
 
     initializeChat() {
         this.createChatHTML();
         this.bindEvents();
-        this.loadWelcomeMessage();
+
+        // Só carrega mensagem de boas-vindas se não estiver em modo humano
+        if (!this.humanChatActive) {
+            this.loadWelcomeMessage();
+        }
     }
 
     createChatHTML() {
@@ -84,7 +152,7 @@ class ChatIA {
         chatButton.addEventListener('click', () => this.toggleChat());
         chatClose.addEventListener('click', () => this.closeChat());
         chatSend.addEventListener('click', () => this.sendMessage());
-        
+
         chatInput.addEventListener('keypress', (e) => {
             if (e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault();
@@ -104,16 +172,18 @@ class ChatIA {
     toggleChat() {
         const chatContainer = document.getElementById('chatContainer');
         const chatButton = document.getElementById('chatButton');
-        
+
         this.isOpen = !this.isOpen;
-        
+
         if (this.isOpen) {
             chatContainer.classList.add('active');
             chatButton.classList.remove('pulse');
             document.getElementById('chatInput').focus();
-            
-            // Restore conversation context if exists
-            if (this.messages.length === 0) {
+
+            // Se está em modo humano, mostra estado atual
+            if (this.humanChatActive) {
+                this.updateInterfaceForHumanMode();
+            } else if (this.messages.length === 0) {
                 this.loadWelcomeMessage();
             }
         } else {
@@ -151,13 +221,13 @@ Posso responder perguntas técnicas, explicar nossos serviços ou conectar você
     showQuickActions() {
         const quickActions = [
             "💻 Desenvolvimento de Apps",
-            "🌐 Sites Institucionais", 
+            "🌐 Sites Institucionais",
             "🚀 Sistemas Web Personalizados",
             "💰 Solicitar Orçamento",
             "👥 Falar com Atendente"
         ];
 
-        const quickActionsHTML = quickActions.map(action => 
+        const quickActionsHTML = quickActions.map(action =>
             `<div class="quick-action" data-action="${action}">${action}</div>`
         ).join('');
 
@@ -166,7 +236,7 @@ Posso responder perguntas técnicas, explicar nossos serviços ou conectar você
         quickActionsContainer.innerHTML = quickActionsHTML;
 
         document.getElementById('chatMessages').appendChild(quickActionsContainer);
-        
+
         quickActionsContainer.querySelectorAll('.quick-action').forEach(button => {
             button.addEventListener('click', () => {
                 const action = button.getAttribute('data-action');
@@ -177,7 +247,7 @@ Posso responder perguntas técnicas, explicar nossos serviços ou conectar você
 
     handleQuickAction(action) {
         document.querySelector('.quick-actions')?.remove();
-        
+
         this.addMessage({
             text: action,
             isBot: false,
@@ -186,7 +256,7 @@ Posso responder perguntas técnicas, explicar nossos serviços ou conectar você
 
         if (action.includes("👥 Falar com Atendente")) {
             this.transferToHuman();
-        } else {
+        } else if (!this.humanChatActive) { // Só responde com IA se não estiver em modo humano
             this.generateBotResponse(action);
         }
     }
@@ -195,7 +265,7 @@ Posso responder perguntas técnicas, explicar nossos serviços ou conectar você
         const input = document.getElementById('chatInput');
         const message = input.value.trim();
 
-        if (message && !this.isTyping && !this.waitingForHuman) {
+        if (message && !this.isTyping) {
             document.querySelector('.quick-actions')?.remove();
 
             this.addMessage({
@@ -207,19 +277,34 @@ Posso responder perguntas técnicas, explicar nossos serviços ou conectar você
             input.value = '';
             this.autoResize();
 
-            this.generateBotResponse(message);
+            // 🔒 BLOQUEIO DA IA: Se está em modo humano, só usa WebSocket
+            if (this.humanChatActive) {
+                if (window.chatWebSocket) {
+                    window.chatWebSocket.sendMessage(message);
+                } else {
+                    this.addMessage({
+                        text: "⚠️ **Conexão perdida**\n\nTentando reconectar com o atendente...",
+                        isBot: true,
+                        timestamp: new Date()
+                    });
+                    this.initializeWebSocket();
+                }
+            } else {
+                // Modo IA normal
+                this.generateBotResponse(message);
+            }
         }
     }
 
     addMessage(message) {
         const messagesContainer = document.getElementById('chatMessages');
-        
+
         const messageElement = document.createElement('div');
         messageElement.className = `message ${message.isBot ? 'bot' : 'user'}`;
-        
-        const time = message.timestamp.toLocaleTimeString('pt-BR', { 
-            hour: '2-digit', 
-            minute: '2-digit' 
+
+        const time = message.timestamp.toLocaleTimeString('pt-BR', {
+            hour: '2-digit',
+            minute: '2-digit'
         });
 
         messageElement.innerHTML = `
@@ -244,8 +329,8 @@ Posso responder perguntas técnicas, explicar nossos serviços ou conectar você
 
     formatMessage(text) {
         return text.replace(/\n/g, '<br>')
-                  .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-                  .replace(/\*(.*?)\*/g, '<em>$1</em>');
+            .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+            .replace(/\*(.*?)\*/g, '<em>$1</em>');
     }
 
     showTypingIndicator() {
@@ -269,11 +354,16 @@ Posso responder perguntas técnicas, explicar nossos serviços ou conectar você
     }
 
     async generateBotResponse(userMessage) {
+        // 🔒 BLOQUEIO: Não responde se está em modo humano
+        if (this.humanChatActive) {
+            return;
+        }
+
         this.showTypingIndicator();
 
         try {
             const response = await this.getAIResponse(userMessage);
-            
+
             setTimeout(() => {
                 this.hideTypingIndicator();
                 this.addMessage({
@@ -315,16 +405,14 @@ Posso responder perguntas técnicas, explicar nossos serviços ou conectar você
         return this.handleUnknownQuery(userMessage);
     }
 
-    shouldTransferToHuman(message) {
-        const transferKeywords = [
-            'humano', 'atendente', 'pessoa', 'especialista', 'consultor', 'falar com alguém',
-            'atendimento humano', 'quero uma pessoa', 'não é robô', 'representante',
-            'gerente', 'vendedor', 'consultoria', 'reunião', 'call', 'telefone',
-            'whatsapp', 'ligar', 'contato direto'
-        ];
+    transferToHuman() {
+        this.pendingHumanTransfer = true; // ⬅️ MARCA QUE ESTÁ AGUARDANDO FORMULÁRIO
 
-        const lowerMessage = message.toLowerCase();
-        return transferKeywords.some(keyword => lowerMessage.includes(keyword));
+        // Esconde ações rápidas
+        document.querySelector('.quick-actions')?.remove();
+
+        // Mostra formulário de informações do cliente
+        this.showClientInfoForm();
     }
 
     getContextualResponse(userMessage) {
@@ -554,7 +642,6 @@ Posso preparar uma estimativa personalizada?`;
 • Suporte pós-entrega
 
 **🎯 Taxa de satisfação:** 95% dos clientes`;
-
     }
 
     getTechStackResponse() {
@@ -633,206 +720,313 @@ Há mais de 5 anos entregando excelência em desenvolvimento!`;
 Qual tipo de projeto você tem em mente?`;
     }
 
-    transferToHuman() {
-        this.waitingForHuman = true;
-        this.showTransferIndicator();
-        
-        // Esconde ações rápidas
-        document.querySelector('.quick-actions')?.remove();
-        
-        // Atualiza status do chat
-        document.getElementById('chatAgentName').textContent = 'Conectando...';
-        document.getElementById('chatAgentStatus').textContent = 'Transferindo para atendente';
-
-        // Simula conexão com WebSocket
-        setTimeout(() => {
-            this.hideTransferIndicator();
-            
-            // Inicializa WebSocket para atendimento humano
-            this.initializeHumanChat();
-            
-        }, 2000);
-    }
-
-    initializeHumanChat() {
-        // Aqui você integraria com o WebSocket real
-        // Por enquanto, vamos simular
-        
+    // NOVO: Atualiza interface para modo humano
+    updateInterfaceForHumanMode() {
         document.getElementById('chatAgentName').textContent = 'Atendente';
-        document.getElementById('chatAgentStatus').textContent = 'Online • WP Web Soluções';
-        
-        this.addMessage({
-            text: `👋 Olá! Sou o **Atendente da WP Web Soluções**
+        document.getElementById('chatAgentStatus').textContent = 'Online • Em atendimento';
 
-Vi que você estava conversando com nosso assistente IA e preferiu falar comigo.
-
-Em que posso ajudar? Pode me contar mais sobre seu projeto ou dúvida!`,
-            isBot: true,
-            timestamp: new Date()
-        });
-
-        // Mostra que agora é atendimento humano
-        this.showHumanQuickActions();
-    }
-
-    showHumanQuickActions() {
-        const humanActions = [
-            "📞 Agendar Call de Apresentação",
-            "💬 Conversar por WhatsApp", 
-            "📧 Enviar Email Detalhado",
-            "💰 Solicitar Proposta Formal",
-            "🔄 Voltar para IA"
-        ];
-
-        const actionsHTML = humanActions.map(action => 
-            `<div class="quick-action human-action" data-action="${action}">${action}</div>`
-        ).join('');
-
-        const actionsContainer = document.createElement('div');
-        actionsContainer.className = 'quick-actions';
-        actionsContainer.innerHTML = actionsHTML;
-
-        document.getElementById('chatMessages').appendChild(actionsContainer);
-        
-        actionsContainer.querySelectorAll('.quick-action').forEach(button => {
-            button.addEventListener('click', () => {
-                const action = button.getAttribute('data-action');
-                this.handleHumanAction(action);
-            });
-        });
-    }
-
-    handleHumanAction(action) {
+        // Remove qualquer ação rápida da IA
         document.querySelector('.quick-actions')?.remove();
-        
-        this.addMessage({
-            text: action,
-            isBot: false,
-            timestamp: new Date()
-        });
-
-        switch(action) {
-            case "📞 Agendar Call de Apresentação":
-                this.scheduleCall();
-                break;
-            case "💬 Conversar por WhatsApp":
-                this.openWhatsApp();
-                break;
-            case "📧 Enviar Email Detalhado":
-                this.sendEmail();
-                break;
-            case "💰 Solicitar Proposta Formal":
-                this.requestProposal();
-                break;
-            case "🔄 Voltar para IA":
-                this.backToAI();
-                break;
-        }
     }
 
-    scheduleCall() {
-        this.addMessage({
-            text: `📅 **Agendamento de Call**
-
-Perfeito! Para agendar uma call de apresentação:
-
-1. **WhatsApp:** (31) 99754-2811
-2. **Email:** contato@wpwebsolucoes.com.br
-3. **Horário:** Seg-Sex, 9h às 18h
-
-**Na call vamos:**
-• Entender seu projeto em detalhes
-• Tirar todas as dúvidas técnicas
-• Apresentar cases similares
-• Discutir prazos e investimento
-
-Pode nos contactar por qualquer canal acima! 📞`,
-            isBot: true,
-            timestamp: new Date()
-        });
-    }
-
-    openWhatsApp() {
-        this.addMessage({
-            text: `📱 **WhatsApp Direto**
-
-Clique no link abaixo para conversar diretamente pelo WhatsApp:
-
-[👉 ABRIR WHATSAPP](https://wa.me/5531997542811?text=Olá! Gostaria de conversar sobre meu projeto.)
-
-**No WhatsApp você pode:**
-• Enviar arquivos e referências
-• Marcar call rapidamente
-• Receber resposta em minutos
-• Falar com nosso time técnico
-
-Estamos online agora! 🟢`,
-            isBot: true,
-            timestamp: new Date()
-        });
-    }
-
-    sendEmail() {
-        this.addMessage({
-            text: `📧 **Contato por Email**
-
-Nosso email: **contato@wpwebsolucoes.com.br**
-
-**No email você pode incluir:**
-• Descrição detalhada do projeto
-• Requisitos e funcionalidades
-• Prazos desejados
-• Orçamento aproximado
-• Anexos e referências
-
-**Respondemos em até 4 horas úteis!** ⚡
-
-Posso ajudar em mais alguma coisa?`,
-            isBot: true,
-            timestamp: new Date()
-        });
-    }
-
-    requestProposal() {
-        this.addMessage({
-            text: `📋 **Proposta Formal**
-
-Excelente! Para prepararmos uma proposta personalizada, preciso saber:
-
-1. **Tipo de projeto** (app, site, sistema)
-2. **Principais funcionalidades** desejadas
-3. **Prazos** esperados
-4. **Orçamento** aproximado (se tiver)
-
-**Na proposta você recebe:**
-• Escopo detalhado do projeto
-• Cronograma faseado
-• Investimento transparente
-• Tecnologias a serem utilizadas
-• Condições de pagamento
-
-Pode me contar mais sobre seu projeto? 🚀`,
-            isBot: true,
-            timestamp: new Date()
-        });
-    }
-
-    backToAI() {
+    // NOVO: Método para voltar para a IA (quando atendente desconecta)
+    returnToAIMode() {
+        this.humanChatActive = false;
         this.waitingForHuman = false;
+        this.saveState();
+
         document.getElementById('chatAgentName').textContent = 'Assistente IA';
         document.getElementById('chatAgentStatus').textContent = 'Online • WP Web Soluções';
-        
+
         this.addMessage({
-            text: "🔄 Voltando para o modo assistente IA. Como posso ajudar você agora?",
+            text: "🔄 **Retornando para o modo assistente IA**\n\nO atendimento humano foi encerrado. Como posso ajudar você agora?",
             isBot: true,
             timestamp: new Date()
         });
 
         this.showQuickActions();
     }
+
+    transferToHuman() {
+        this.pendingHumanTransfer = true; // ⬅️ MARCA QUE ESTÁ AGUARDANDO FORMULÁRIO
+
+        // Esconde ações rápidas
+        document.querySelector('.quick-actions')?.remove();
+
+        // Mostra formulário de informações do cliente
+        this.showClientInfoForm();
+    }
+
+    initializeWebSocket() {
+        if (!window.chatWebSocket) {
+            window.chatWebSocket = new ChatWebSocket(this);
+        }
+        window.chatWebSocket.connect();
+    }
+
+    // NOVO: Método para mostrar formulário de informações do cliente
+    showClientInfoForm() {
+        const formHTML = `
+        <div class="client-info-form" id="clientInfoForm">
+            <div class="form-header">
+                <h4>📋 Antes de conectar com nosso atendente</h4>
+                <p>Preencha suas informações para agilizar o atendimento:</p>
+            </div>
+            
+            <div class="form-fields">
+                <div class="form-group">
+                    <label for="clientName">Seu Nome *</label>
+                    <input type="text" id="clientName" placeholder="Como gostaria de ser chamado?" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="clientEmail">E-mail *</label>
+                    <input type="email" id="clientEmail" placeholder="seu@email.com" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="clientPhone">Telefone/WhatsApp *</label>
+                    <input type="tel" id="clientPhone" placeholder="(00) 00000-0000" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="clientProject">Tipo de Projeto</label>
+                    <select id="clientProject">
+                        <option value="">Selecione uma opção</option>
+                        <option value="app">Aplicativo Mobile</option>
+                        <option value="site">Site Institucional</option>
+                        <option value="ecommerce">Loja Virtual (E-commerce)</option>
+                        <option value="sistema">Sistema Web</option>
+                        <option value="landing">Landing Page</option>
+                        <option value="outro">Outro</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="clientUrgency">Urgência do Projeto</label>
+                    <select id="clientUrgency">
+                        <option value="baixa">Baixa - Apenas orçamentando</option>
+                        <option value="media">Média - Início em 1-2 meses</option>
+                        <option value="alta">Alta - Início imediato</option>
+                    </select>
+                </div>
+                
+                <div class="form-group full-width">
+                    <label for="clientMessage">Mensagem para o atendente</label>
+                    <textarea 
+                        id="clientMessage" 
+                        placeholder="Conte um pouco sobre seu projeto, objetivos ou dúvidas específicas..."
+                        rows="3"
+                    ></textarea>
+                </div>
+            </div>
+            
+            <div class="form-actions">
+                <button type="button" class="btn-cancel" id="cancelFormBtn">
+                    <i class="fas fa-times"></i>
+                    Cancelar
+                </button>
+                <button type="button" class="btn-submit" id="submitFormBtn">
+                    <i class="fas fa-user-headset"></i>
+                    Conectar com Atendente
+                </button>
+            </div>
+            
+            <div class="form-footer">
+                <p><small>⚠️ Seus dados estão seguros e serão usados apenas para este atendimento.</small></p>
+            </div>
+        </div>
+    `;
+
+        const formContainer = document.createElement('div');
+        formContainer.className = 'message bot';
+        formContainer.innerHTML = `
+        <div class="message-text">
+            ${formHTML}
+        </div>
+        <div class="message-time">${new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</div>
+    `;
+
+        document.getElementById('chatMessages').appendChild(formContainer);
+        document.getElementById('chatMessages').scrollTop = document.getElementById('chatMessages').scrollHeight;
+
+        // Adiciona eventos ao formulário
+        this.bindFormEvents();
+    }
+
+    // NOVO: Método para vincular eventos do formulário
+    bindFormEvents() {
+        const cancelBtn = document.getElementById('cancelFormBtn');
+        const submitBtn = document.getElementById('submitFormBtn');
+
+        if (cancelBtn) {
+            cancelBtn.addEventListener('click', () => {
+                const formElement = document.getElementById('clientInfoForm');
+                if (formElement) {
+                    formElement.closest('.message').remove();
+                }
+                this.pendingHumanTransfer = false;
+                this.addMessage({
+                    text: "❌ **Solicitação cancelada**\n\nVocê cancelou a solicitação de atendimento humano. Como posso ajudá-lo com nossa IA?",
+                    isBot: true,
+                    timestamp: new Date()
+                });
+                this.showQuickActions();
+            });
+        }
+
+        if (submitBtn) {
+            submitBtn.addEventListener('click', () => {
+                this.submitClientInfoForm();
+            });
+        }
+
+        // Enter para submeter formulário
+        const form = document.getElementById('clientInfoForm');
+        if (form) {
+            form.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter' && e.target.tagName !== 'TEXTAREA') {
+                    e.preventDefault();
+                    this.submitClientInfoForm();
+                }
+            });
+        }
+    }
+
+    // NOVO: Método para submeter formulário
+    submitClientInfoForm() {
+        const nameInput = document.getElementById('clientName');
+        const emailInput = document.getElementById('clientEmail');
+        const phoneInput = document.getElementById('clientPhone');
+
+        if (!nameInput || !emailInput || !phoneInput) {
+            console.error('Campos do formulário não encontrados');
+            return;
+        }
+
+        const name = nameInput.value.trim();
+        const email = emailInput.value.trim();
+        const phone = phoneInput.value.trim();
+        const project = document.getElementById('clientProject').value;
+        const urgency = document.getElementById('clientUrgency').value;
+        const message = document.getElementById('clientMessage').value.trim();
+
+        const timeOnPage = Math.round((Date.now() - this.startTime) / 1000);
+        const origin = document.referrer || 'Acesso Direto';
+
+        // Validação básica
+        if (!name || !email || !phone) {
+            this.showFormError('Por favor, preencha pelo menos nome, e-mail e telefone.');
+            return;
+        }
+
+        if (!this.validateEmail(email)) {
+            this.showFormError('Por favor, insira um e-mail válido.');
+            return;
+        }
+
+        // Remove o formulário
+        const formElement = document.getElementById('clientInfoForm');
+        if (formElement) {
+            formElement.closest('.message').remove();
+        }
+
+        // Adiciona mensagem de confirmação
+        this.addMessage({
+            text: `📋 **Informações enviadas!**\n\nObrigado, ${name}! Suas informações foram recebidas e já estamos conectando você com um de nossos especialistas.`,
+            isBot: true,
+            timestamp: new Date()
+        });
+
+        // Prepara dados para envio
+        const clientData = {
+            name,
+            email,
+            phone,
+            project,
+            urgency,
+            message,
+            timeOnPage: `${timeOnPage} segundos`,
+            source: origin,
+            page: window.location.href,
+            timestamp: new Date().toISOString(),
+            sessionId: this.sessionId
+        };
+
+        // Inicia a transferência real
+        this.startHumanTransfer(clientData);
+    }
+
+    // NOVO: Método para validar e-mail
+    validateEmail(email) {
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        return emailRegex.test(email);
+    }
+
+    // NOVO: Método para mostrar erro no formulário
+    showFormError(message) {
+        let errorElement = document.getElementById('formError');
+
+        if (!errorElement) {
+            errorElement = document.createElement('div');
+            errorElement.id = 'formError';
+            errorElement.className = 'form-error';
+            const form = document.getElementById('clientInfoForm');
+            if (form) {
+                form.insertBefore(errorElement, form.querySelector('.form-actions'));
+            }
+        }
+
+        errorElement.innerHTML = `<i class="fas fa-exclamation-triangle"></i> ${message}`;
+        errorElement.style.display = 'block';
+
+        // Scroll para o erro
+        errorElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+
+    // NOVO: Método para iniciar transferência com dados do cliente
+    // CORRIGIDO: Método para iniciar transferência com dados do cliente
+    startHumanTransfer(clientData) {
+        this.waitingForHuman = true;
+        this.humanChatActive = true;
+        this.pendingHumanTransfer = false;
+        this.saveState();
+
+        this.showTransferIndicator();
+
+        document.getElementById('chatAgentName').textContent = 'Conectando...';
+        document.getElementById('chatAgentStatus').textContent = 'Transferindo para atendente';
+
+        // A linha do bug "conversationContext.push" foi removida daqui.
+
+        // Adiciona mensagem de transição
+        this.addMessage({
+            text: "🔄 **Conectando com atendente humano...**\n\nAguarde um momento enquanto conectamos você com um de nossos especialistas.",
+            isBot: true,
+            timestamp: new Date()
+        });
+
+        // Inicializa WebSocket com dados do cliente
+        this.initializeWebSocket(clientData);
+    }
+
+    // ATUALIZADO: Método initializeWebSocket para aceitar dados do cliente
+    initializeWebSocket(clientData = null) {
+        if (!window.chatWebSocket) {
+            window.chatWebSocket = new ChatWebSocket(this);
+        }
+
+        // Passa os dados do cliente para o WebSocket
+        if (clientData) {
+            window.chatWebSocket.clientData = clientData;
+        }
+
+        window.chatWebSocket.connect();
+    }
 }
 
 // Initialize chat when DOM is loaded
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', function () {
     window.chatIA = new ChatIA();
+    console.log('✅ Chat IA inicializado com sucesso');
 });
