@@ -3,3 +3,4 @@ __pycache__
 ._deploy.sh
 .gitignore
 .gitattributes
+.deploy.sh
