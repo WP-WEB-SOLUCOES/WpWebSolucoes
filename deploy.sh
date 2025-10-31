@@ -19,51 +19,65 @@ export PATH="$HOME/.cargo/bin:/usr/local/bin:/usr/bin:$PATH"
 
 cd "$WORK_DIR"
 
-# 1. Buscar atualizações do repositório
-echo "[1/6] Buscando atualizações do GitHub..." >> "$LOG_FILE"
+# 1. Garantir que estamos na branch correta
+CURRENT_BRANCH=$(git symbolic-ref --short HEAD || echo "detached")
+if [ "$CURRENT_BRANCH" != "$BRANCH" ]; then
+    echo "[1/7] Mudando para a branch $BRANCH..." >> "$LOG_FILE"
+    git checkout "$BRANCH" >> "$LOG_FILE" 2>&1
+fi
+
+# 2. Buscar atualizações do remoto
+echo "[2/7] Buscando atualizações do GitHub..." >> "$LOG_FILE"
 git fetch origin "$BRANCH" >> "$LOG_FILE" 2>&1
 
-# 2. Verificar se há mudanças
+# 3. Comparar commits
 LOCAL_HASH=$(git rev-parse HEAD)
 REMOTE_HASH=$(git rev-parse origin/"$BRANCH")
 
 if [ "$LOCAL_HASH" = "$REMOTE_HASH" ]; then
-    echo "[2/6] Nenhuma atualização encontrada. Deploy encerrado." >> "$LOG_FILE"
+    echo "[3/7] Nenhuma atualização encontrada. Deploy encerrado." >> "$LOG_FILE"
     exit 0
 fi
 
-echo "[2/6] Detectadas mudanças no repositório..." >> "$LOG_FILE"
+echo "[3/7] Mudanças detectadas: local=$LOCAL_HASH remoto=$REMOTE_HASH" >> "$LOG_FILE"
 
-# 3. Obter lista de arquivos modificados
+# 4. Listar arquivos alterados
 CHANGED_FILES=$(git diff --name-only "$LOCAL_HASH" "$REMOTE_HASH")
-echo "[3/6] Arquivos modificados:" >> "$LOG_FILE"
+echo "[4/7] Arquivos modificados:" >> "$LOG_FILE"
 echo "$CHANGED_FILES" >> "$LOG_FILE"
 
-# 4. Atualizar apenas arquivos modificados
-echo "[4/6] Atualizando arquivos modificados..." >> "$LOG_FILE"
+if [ -z "$CHANGED_FILES" ]; then
+    echo "[4/7] Nenhum arquivo detectado como modificado. Encerrando." >> "$LOG_FILE"
+    exit 0
+fi
+
+# 5. Atualizar SOMENTE os arquivos modificados
+echo "[5/7] Atualizando arquivos modificados..." >> "$LOG_FILE"
 for file in $CHANGED_FILES; do
-    # Criar diretórios se necessário
+    # Garantir que o diretório existe
     mkdir -p "$(dirname "$file")"
+    # Substituir apenas o arquivo modificado
     git checkout origin/"$BRANCH" -- "$file" >> "$LOG_FILE" 2>&1
 done
 
-# 5. Verificar se dependências mudaram
+# 6. Atualizar dependências se necessário
 DEPS_CHANGED=false
 for file in "${DEP_FILES[@]}"; do
     if echo "$CHANGED_FILES" | grep -q "^$file$"; then
-        echo "[5/6] $file modificado → atualizando dependências com uv" >> "$LOG_FILE"
+        echo "[6/7] $file modificado → atualizando dependências (uv sync)" >> "$LOG_FILE"
         DEPS_CHANGED=true
+        break
     fi
 done
 
-# 6. Atualizar dependências se necessário
 if [ "$DEPS_CHANGED" = true ]; then
     uv sync --frozen >> "$LOG_FILE" 2>&1
 else
-    echo "[5/6] Nenhuma mudança em dependências → pulando atualização de pacotes" >> "$LOG_FILE"
+    echo "[6/7] Nenhuma dependência modificada. Pulando atualização de pacotes." >> "$LOG_FILE"
 fi
 
 # 7. Log de finalização
 {
   echo "=== DEPLOY FINALIZADO com sucesso em $(date) ==="
+  echo "==============================================="
 } >> "$LOG_FILE"
